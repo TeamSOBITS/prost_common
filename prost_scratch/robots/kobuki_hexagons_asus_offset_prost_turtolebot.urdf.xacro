@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<robot name="turtlebot" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find prost_scratch)/model/urdf/prost_turtolebot_common_library.urdf.xacro" />
+  <xacro:include filename="$(find kobuki_description)/urdf/kobuki.urdf.xacro" />
+
+</robot>

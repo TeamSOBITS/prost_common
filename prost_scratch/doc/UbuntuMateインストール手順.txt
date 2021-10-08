@@ -1,0 +1,36 @@
+OSセットアップ
+
+パスワード入力のところで自動ログイン設定にしておく。
+
+sudo apt update
+sudo apt upgrade
+
+
+
+sudo apt remove ntp
+sudo apt install ntp
+ntp内を書き換え time.soka.ac.jp　と　nict
+sudo apt install ntpdate
+sudo systemctl enable ntp.service
+sudo systemctl disable bluetooth.service
+
+sudo apt install vim
+sudo apt install git
+sudo apt install chromium-browser
+
+sudo apt install openssh-server
+Sudo systemctl enable ssh.service
+
+sudo apt install fcitx-mozc
+im-config -n fcitx
+
+sudo reboot
+
+
+git clone https://gitlab.com/TeamBOSITS/sobits-setup.git
+
+ROSのインストール
+
+opencv3.4.2のインストール
+
+prost_scratch,text_to_speech,julius_rosのclone

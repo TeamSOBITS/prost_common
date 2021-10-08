@@ -1,0 +1,29 @@
+sudo apt install screen
+
+以下のファイルを作成
+sudo pluma /etc/systemd/system/scratch.service
+
+[Unit]
+Description=Scratch launcher
+After=networking.service
+Requires=networking.service
+
+[Service]
+User=pi-ps
+ExecStart=/usr/bin/screen -S scratch -ADm bash -l -c 'roslaunch prost_scratch scratch_connector.launch'
+Type=simple
+Restart=always
+RestartSec=1s
+
+[Install]
+WantedBy=multi-user.target
+
+
+実行
+sudo systemctl start scratch.service
+
+動作確認
+systemctl status scratch.service
+
+停止
+

@@ -1,0 +1,27 @@
+＜コード自動更新の手順＞
+1.project_robotのGatewayとDNSserversを設定//192.168.1.1
+2.USBからホームにgit_pull_all_prostのpkgと~/catkin_ws/src下にchmod_all.pyを入れる
+3.
+$ git config --global credential.helper store
+4.既存のprost_scratchは削除して、以下を実行
+$ cd ~/catki_ws/src
+$ git clone https://gitlab.com/project_studies/prost_scratch.git
+→初回は、ユーザ名とパスワードを聞かれる
+6.$HOME/.git-credentialsというファイルに保存される
+7.ホームの.bashrcを以下に変更
+→削除：
+roslaunch prost_scratch scratch_connector.launch
+
+→追加：
+alias cm='cd ~/catkin_ws && catkin_make'
+alias ch='cd ~/catkin_ws/src && python chmod_all.py'
+alias gpa='cd && python git_pull_all_prost/git_pull_all_prost.py'
+
+export GIT_SSL_NO_VERIFY=1 
+cd ~/git_pull_all_prost
+python git_pull_all_prost.py
+
+
+//以上で設定終了
+変更が反映されているか、gitlabの内容を更新した後、
+ラズパイを再起動してコードの中身も更新されているか確認する。

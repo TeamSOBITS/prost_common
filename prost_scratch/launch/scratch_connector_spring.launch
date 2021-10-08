@@ -1,0 +1,21 @@
+<launch>
+
+  	<!-- scratch3_connector -->
+	<node name="scratch3_connector" pkg="prost_scratch" type="scratch3_connector.py" output="screen"/>
+	<!-- turtlebot_bringup -->
+	<include file="$(find prost_scratch)/launch/minimal.launch"/>
+
+	<!-- rosbridge_server -->
+	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch"/>
+
+	<!-- wifi_connect -->
+	<node name="wifi_connect" pkg="prost_scratch" type="wifi_connect.py" output="screen"/>
+
+	<!-- text_to_speech -->
+	<include file="$(find text_to_speech)/launch/tts_open_jtalk.launch"/>
+
+	<!-- prost_scratch_kobuki_controller -->
+	<node name="prost_scratch_kobuki_controller" pkg="prost_scratch" type="prost_scratch_kobuki_controller.py" output="screen"/>
+
+
+</launch>

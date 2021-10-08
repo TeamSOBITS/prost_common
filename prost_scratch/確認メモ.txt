@@ -1,0 +1,3 @@
+ノートパソコンのweb_camの起動コマンド(オフにしないとgazebo起動した時にweb_cam映像もsubscribeされる)
+オフ：sudo modprobe -r uvcvideo
+オン：sudo modprobe uvcvideo
