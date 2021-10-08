@@ -21,9 +21,4 @@ sudo apt install google-chrome-stable -y
 
 sudo apt install ros-melodic-visp-auto-tracker -y
 sudo cp ~/catkin_ws/src/prost_common/libgazebo_ros_kobuki.so /opt/ros/melodic/lib
-cd ~/catkin_ws
-catkin_make
 
-# 関係ない
-#sudo apt install ros-melodic-pcl-*
-#sudo apt install ros-melodic-openni2-*
