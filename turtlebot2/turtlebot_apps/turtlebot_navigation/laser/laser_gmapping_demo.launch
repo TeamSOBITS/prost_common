@@ -4,11 +4,13 @@
   <node name="laser_filter"  pkg="turtlebot_navigation" type="laser_footprint_filter" />
  
   <!--- Run gmapping -->
-  <include file="$(find turtlebot_navigation)/config/gmapping_turtlebot.launch" >
+  <!-- <include file="$(find turtlebot_navigation)/config/gmapping_turtlebot.launch" > -->
+  <include file="$(find turtlebot_navigation)/launch/includes/gmapping/gmapping.launch.xml" >
     <arg name="scan_topic" value="scan_filtered" />
   </include>
 
   <!--- Run Move Base and Robot Pose EKF -->
-  <include file="$(find turtlebot_navigation)/laser/move_base_turtlebot_laser.launch" />
+  <!-- <include file="$(find turtlebot_navigation)/laser/move_base_turtlebot_laser.launch" /> -->
+  <include file="$(find turtlebot_navigation)/laser/move_base_laser.launch" />
 
 </launch>

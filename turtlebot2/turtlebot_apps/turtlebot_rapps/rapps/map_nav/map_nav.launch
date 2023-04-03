@@ -45,7 +45,7 @@
   <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml">
     <arg name="odom_topic" value ="/odom" />
   </include>
-  <include file="$(find turtlebot_navigation)/launch/includes/amcl.launch.xml">
+  <include file="$(find turtlebot_navigation)/launch/includes/amcl/amcl.launch.xml">
     <arg name="use_map_topic" value ="true"/>
   </include>
  

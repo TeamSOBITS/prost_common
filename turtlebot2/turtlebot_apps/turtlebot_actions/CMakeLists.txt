@@ -5,10 +5,10 @@ project(turtlebot_actions)
 find_package(catkin REQUIRED COMPONENTS cmake_modules roscpp actionlib actionlib_msgs geometry_msgs message_generation tf cv_bridge image_transport image_geometry)
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(cmake_modules REQUIRED)
-find_package(Eigen3 REQUIRED)
+find_package(Eigen REQUIRED)
 find_package(OpenCV REQUIRED)
 
-include_directories(include ${Boost_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
+include_directories(include ${Boost_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
 # actions
 add_action_files(
@@ -37,7 +37,7 @@ add_dependencies(find_fiducial_pose turtlebot_actions_gencpp)
 
 # what other packages will need to use this package
 catkin_package(
-    DEPENDS EIGEN3 opencv
+    DEPENDS eigen opencv
     CATKIN_DEPENDS roscpp actionlib actionlib_msgs geometry_msgs message_runtime tf cv_bridge image_transport image_geometry turtlebot_bringup
     INCLUDE_DIRS include
 )

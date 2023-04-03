@@ -154,8 +154,8 @@
     </joint>
     <link name="camera_depth_optical_frame"/>
     
-  	
-  	<!-- Simulation sensor -->
+      
+      <!-- Simulation sensor -->
     <xacro:turtlebot_sim_3dsensor/>
   </xacro:macro>
 </robot>

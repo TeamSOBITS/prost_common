@@ -9,9 +9,11 @@
   i.e. a fair bit of work is needed.
  -->
 <launch>
-  <include file="$(find turtlebot_bringup)/launch/includes/$(arg base)/_safety_controller.launch"/>
+  <!-- <include file="$(find turtlebot_bringup)/launch/includes/$(arg base)/_safety_controller.launch"/> -->
+  <include file="$(find turtlebot_bringup)/launch/includes/kobuki/safety_controller.launch.xml"/>
 
-  <include file="$(find turtlebot_navigation)/launch/includes/_move_base.launch"/>
+
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
 
   <!-- We are blind, so... do not run! this limit is tolerably safe for cliffs -->
   <param name="navigation_velocity_smoother/max_vel_x" value="0.4"/>
