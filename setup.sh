@@ -35,7 +35,7 @@ sudo cp ~/catkin_ws/src/prost_common/libgazebo_ros_kobuki.so /opt/ros/noetic/lib
 #     ros-${ROS_DISTRO}-joy \
 #     ros-${ROS_DISTRO}-joint-state-publisher*
 
-# sudo cp ~/catkin_ws/src/sobit_common/turtlebot2/turtlebot_simulator/turtlebot_gazebo/libgazebo_ros_kobuki.so /opt/ros/${ROS_DISTRO}/lib
+sudo cp ~/catkin_ws/src/sobit_common/turtlebot2/turtlebot_simulator/turtlebot_gazebo/libgazebo_ros_kobuki.so /opt/ros/noetic/lib
 
 # # 関係ない
 # sudo apt-get install -y \
