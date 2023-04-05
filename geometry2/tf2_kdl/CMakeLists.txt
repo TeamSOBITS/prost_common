@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 2.8.3)
 project(tf2_kdl)
 
 find_package(orocos_kdl)
@@ -37,7 +37,7 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS} ${GTES
 install(DIRECTORY include/${PROJECT_NAME}/
         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 
-catkin_install_python(PROGRAMS scripts/test.py
+install(PROGRAMS scripts/test.py
          DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

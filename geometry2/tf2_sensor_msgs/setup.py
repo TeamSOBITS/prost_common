@@ -1,12 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-from setuptools import setup
+from distutils.core import setup
 from catkin_pkg.python_setup import generate_distutils_setup
 
 d = generate_distutils_setup(
     packages=['tf2_sensor_msgs'],
     package_dir={'': 'src'},
-    requires=['rospy','sensor_msgs','tf2_ros','orocos_kdl']
+    requires={'rospy','sensor_msgs','tf2_ros','orocos_kdl'}
 )
 
 setup(**d)

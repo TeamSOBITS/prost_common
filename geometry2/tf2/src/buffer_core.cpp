@@ -268,14 +268,13 @@ bool BufferCore::setTransform(const geometry_msgs::TransformStamped& transform_i
     if (frame == NULL)
       frame = allocateFrame(frame_number, is_static);
 
-    std::string error_string;
-    if (frame->insertData(TransformStorage(stripped, lookupOrInsertFrameNumber(stripped.header.frame_id), frame_number), &error_string))
+    if (frame->insertData(TransformStorage(stripped, lookupOrInsertFrameNumber(stripped.header.frame_id), frame_number)))
     {
       frame_authority_[frame_number] = authority;
     }
     else
     {
-      CONSOLE_BRIDGE_logWarn((error_string+" for frame %s at time %lf according to authority %s").c_str(), stripped.child_frame_id.c_str(), stripped.header.stamp.toSec(), authority.c_str());
+      CONSOLE_BRIDGE_logWarn("TF_OLD_DATA ignoring data from the past for frame %s at time %g according to authority %s\nPossible reasons are listed at http://wiki.ros.org/tf/Errors%%20explained", stripped.child_frame_id.c_str(), stripped.header.stamp.toSec(), authority.c_str());
       return false;
     }
   }
@@ -358,7 +357,7 @@ int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id,
       break;
     }
 
-    CompactFrameID parent = f.gather(cache, time, error_string ? &extrapolation_error_string : NULL);
+    CompactFrameID parent = f.gather(cache, time, &extrapolation_error_string);
     if (parent == 0)
     {
       // Just break out here... there may still be a path from source -> target
@@ -414,10 +413,9 @@ int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id,
     {
       if (error_string)
       {
-        // optimize performance by not using stringstream
-        char str[1000];
-        snprintf(str, sizeof(str), "%s, when looking up transform from frame [%s] to frame [%s]", error_string->c_str(), lookupFrameString(source_id).c_str(), lookupFrameString(target_id).c_str());
-        *error_string = str;
+        std::stringstream ss;
+        ss << *error_string << ", when looking up transform from frame [" << lookupFrameString(source_id) << "] to frame [" << lookupFrameString(target_id) << "]";
+        *error_string = ss.str();
       }
 
       return tf2_msgs::TF2Error::EXTRAPOLATION_ERROR;
@@ -461,10 +459,9 @@ int BufferCore::walkToTopParent(F& f, ros::Time time, CompactFrameID target_id,
     {
       if (error_string)
       {
-        // optimize performance by not using stringstream
-        char str[1000];
-        snprintf(str, sizeof(str), "%s, when looking up transform from frame [%s] to frame [%s]", extrapolation_error_string.c_str(), lookupFrameString(source_id).c_str(), lookupFrameString(target_id).c_str());
-        *error_string = str;
+        std::stringstream ss;
+        ss << extrapolation_error_string << ", when looking up transform from frame [" << lookupFrameString(source_id) << "] to frame [" << lookupFrameString(target_id) << "]";
+        *error_string = ss.str();
       }
 
       return tf2_msgs::TF2Error::EXTRAPOLATION_ERROR;
@@ -1261,11 +1258,8 @@ void BufferCore::removeTransformableCallback(TransformableCallbackHandle handle)
 
   {
     boost::mutex::scoped_lock lock(transformable_requests_mutex_);
-    auto it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByCallback(handle));
-    if (it != transformable_requests_.end())
-    {
-      transformable_requests_.erase(it, transformable_requests_.end());
-    }
+    V_TransformableRequest::iterator it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByCallback(handle));
+    transformable_requests_.erase(it, transformable_requests_.end());
   }
 }
 
@@ -1341,7 +1335,8 @@ struct BufferCore::RemoveRequestByID
 void BufferCore::cancelTransformableRequest(TransformableRequestHandle handle)
 {
   boost::mutex::scoped_lock lock(transformable_requests_mutex_);
-  auto it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByID(handle));
+  V_TransformableRequest::iterator it = std::remove_if(transformable_requests_.begin(), transformable_requests_.end(), RemoveRequestByID(handle));
+
   if (it != transformable_requests_.end())
   {
     transformable_requests_.erase(it, transformable_requests_.end());
