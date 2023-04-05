@@ -3,7 +3,7 @@
   <arg name="stacks"/>
   <arg name="3d_sensor"/>
 
-  <arg name="urdf_file" default="$(find xacro)/xacro.py '$(find prostbot_description)/robots/kobuki_hexagons_asus_xtion_pro_offset.urdf.xacro'" />
+  <arg name="urdf_file" default="$(find xacro)/xacro '$(find prostbot_description)/robots/kobuki_hexagons_asus_xtion_pro_offset.urdf.xacro'"/>
   <param name="robot_description" command="$(arg urdf_file)" />
 
   <!-- Gazebo model spawner -->
@@ -14,7 +14,7 @@
   <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
   <node pkg="nodelet" type="nodelet" name="cmd_vel_mux"
         args="load yocs_cmd_vel_mux/CmdVelMuxNodelet mobile_base_nodelet_manager">
-    <param name="yaml_cfg_file" value="$(find turtlebot_bringup)/param/mux.yaml" />
+    <param name="yaml_cfg_file" value="$(find turtlebot_bringup)/param/mux.yaml"/>
     <remap from="cmd_vel_mux/output" to="mobile_base/commands/velocity"/>
   </node>
 
