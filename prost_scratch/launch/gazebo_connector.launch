@@ -1,30 +1,30 @@
 <launch>
 
-  <!-- turtlebot_bringup -->
-  <include file="$(find prostbot_gazebo)/launch/turtlebot_world.launch"/>
+	<!-- turtlebot_bringup -->
+	<include file="$(find prostbot_gazebo)/launch/turtlebot_world.launch"/>
 
-  <!-- rosbridge_server -->
-  <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch"/>
+	<!-- rosbridge_server -->
+	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch"/>
 
-  <!-- web_video_server -->
+	<!-- web_video_server -->
   <node name="web_video_server" pkg="web_video_server" type="web_video_server" output="screen"/>
 
-  <!-- wifi_connect -->
-  <node name="wifi_connect" pkg="prost_scratch" type="wifi_connect_sim.sh" output="screen"/>
+	<!-- wifi_connect -->
+	<node name="wifi_connect" pkg="prost_scratch" type="wifi_connect_sim.sh" output="screen"/>
 
-  <!-- text_to_speech -->
-  <!-- <include file="$(find text_to_speech)/launch/japanese.launch"/> -->
+	<!-- text_to_speech -->
+	<!-- <include file="$(find text_to_speech)/launch/japanese.launch"/> -->
 
-  <!-- julius_ros -->
-  <!-- <include file="$(find julius_ros)/launch/speech_recognition.launch"/> -->
+	<!-- julius_ros -->
+	<!-- <include file="$(find julius_ros)/launch/speech_recognition.launch"/> -->
 
-  <!-- prost_scratch_kobuki_controller -->
-  <node name="prost_scratch_kobuki_controller" pkg="prost_scratch" type="prost_scratch_kobuki_controller.sh" output="screen"/>
+	<!-- prost_scratch_kobuki_controller -->
+	<node name="prost_scratch_kobuki_controller" pkg="prost_scratch" type="prost_scratch_kobuki_controller.sh" output="screen"/>
 
-  <!-- tracklive_usb -->
-  <!-- <include file="$(find prost_scratch)/launch/tracklive_usb.launch"/> -->
+	<!-- tracklive_usb -->
+	<!-- <include file="$(find prost_scratch)/launch/tracklive_usb.launch"/> -->
 
-  <!-- for_prosta_competition -->
-  <include file="$(find prost_scratch)/launch/for_prosta_competition.launch"/>
+	<!-- for_prosta_competition -->
+	<include file="$(find prost_scratch)/launch/for_prosta_competition.launch"/>
 
 </launch>

@@ -4,7 +4,7 @@
 	<node name="color_recognition_range_drawing" pkg="prost_scratch" type="color_recognition_range_drawing.sh" output="screen"/>
 
 	<!-- qr_recode -->
-	<node name="qr_recode" pkg="prost_scratch" type="qr_recode.sh" output="screen"/> 
+	<node name="qr_recode" pkg="prost_scratch" type="qr_recode.sh" output="screen"/> -->
 
   <!-- rgb_average_value -->
 	<node name="rgb_average_value" pkg="prost_scratch" type="rgb_average_value.sh" output="screen"/>
