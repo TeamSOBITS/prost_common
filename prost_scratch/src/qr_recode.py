@@ -42,10 +42,10 @@ class QrRecode:
         # picture change PIL
         pil_img = PIL.Image.fromarray(img)
         width, height = pil_img.size
-        raw = pil_img.tobytes()
+        #raw = pil_img.tobytes() #今だけコメントアウト
 
         # result
-        decoded = pyzbar.decode(raw)
+        decoded = pyzbar.decode(img) #今だけraw→img
 
         word = ""
         for d in decoded:

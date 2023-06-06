@@ -18,7 +18,7 @@ if __name__ == "__main__":
     pub_wifi_connect = rospy.Publisher('/wifi_connect', Bool, queue_size=10)
 
     while not rospy.is_shutdown():
-        wifi_ip = check_output(['hostname', '-I'])
+        wifi_ip = check_output(['hostname', '-I']).decode()
         if IP in wifi_ip:
             if node_kill_flag == True:
             	node_run = Popen(["roslaunch","rosbridge_server","rosbridge_websocket.launch"])
