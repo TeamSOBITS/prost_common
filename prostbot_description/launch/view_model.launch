@@ -2,7 +2,7 @@
   Useful for debugging or just viewing the kobuki model/urdf/transform.
  -->
 <launch>
-  <arg name="urdf_file" default="$(find xacro)/xacro --inorder '$(find base_description)/urdf/kobuki_standalone.urdf.xacro'"/>
+  <arg name="urdf_file" default="$(find xacro)/xacro '$(find prostbot_description)/robots/kobuki_project_studies.urdf.xacro'"/>
   <param name="robot_description" command="$(arg urdf_file)"/>
 
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
@@ -12,5 +12,5 @@
     <param name="use_gui" value="true"/>
   </node>
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find base_description)/rviz/model.rviz"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find prostbot_description)/rviz/model.rviz"/>
 </launch>

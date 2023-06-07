@@ -170,22 +170,22 @@
 	  </gazebo>
 
 	  <gazebo>
-	    <plugin name="kobuki_controller" filename="libgazebo_ros_kobuki.so">
-	      <publish_tf>1</publish_tf>
-	      <left_wheel_joint_name>wheel_left_joint</left_wheel_joint_name>
-	      <right_wheel_joint_name>wheel_right_joint</right_wheel_joint_name>
-	      <wheel_separation>.230</wheel_separation>
-	      <wheel_diameter>0.070</wheel_diameter>
-	      <torque>1.0</torque>
-	      <velocity_command_timeout>0.6</velocity_command_timeout>
-	      <cliff_sensor_left_name>cliff_sensor_left</cliff_sensor_left_name>
-	      <cliff_sensor_center_name>cliff_sensor_front</cliff_sensor_center_name>
-	      <cliff_sensor_right_name>cliff_sensor_right</cliff_sensor_right_name>
-	      <cliff_detection_threshold>0.04</cliff_detection_threshold>
-	      <bumper_name>bumpers</bumper_name>
+      <plugin name="kobuki_controller" filename="libgazebo_ros_kobuki.so">
+        <publish_tf>1</publish_tf>
+        <left_wheel_joint_name>wheel_l_joint</left_wheel_joint_name>
+        <right_wheel_joint_name>wheel_r_joint</right_wheel_joint_name>
+        <wheel_separation>.230</wheel_separation>
+        <wheel_diameter>0.070</wheel_diameter>
+        <torque>1.0</torque>
+        <velocity_command_timeout>0.6</velocity_command_timeout>
+        <cliff_sensor_left_name>cliff_sensor_left</cliff_sensor_left_name>
+        <cliff_sensor_center_name>cliff_sensor_front</cliff_sensor_center_name>
+        <cliff_sensor_right_name>cliff_sensor_right</cliff_sensor_right_name>
+        <cliff_detection_threshold>0.04</cliff_detection_threshold>
+        <bumper_name>bumpers</bumper_name>
         <imu_name>imu</imu_name>
-	    </plugin>
-	  </gazebo>
+      </plugin>
+    </gazebo>
 
 
     <!-- camera -->

@@ -1,0 +1,45 @@
+<?xml version="1.0" ?>
+<!--
+  This is not a standalone urdf for kobuki. It simply defines the 'kobuki' tag that can
+  be incorporated by other urdf files (e.g. turtlebot).
+
+  See kobuki_standalone.urdf.xacro for a standalone urdf to be tested with
+      prostbot_description/launch/view_model.launch
+ -->
+<robot name="base" xmlns:xacro="http://ros.org/wiki/xacro">
+  <!-- Kobuki -->
+  <xacro:macro name="base">
+    
+    <!-- cam_link -->
+    <link name="cam_link">
+      <visual>
+        <geometry>
+          <box size="0.065 0.1 0.055"/>
+        </geometry>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <material name="black">
+          <color rgba="0.0 0.0 0.0 1.0"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="cam_joint" type="fixed">
+      <parent link="plate_top_link"/>
+      <child  link="cam_link"/>
+      <origin rpy="0 0 0" xyz="0.11 0.0 0.0275"/>
+       <axis xyz="0 0 1"/>
+       <limit effort="30" lower="-3.14" upper="3.14" velocity="1.571"/>
+    </joint>
+
+    <!-- cam_rgb_link -->
+    <link name="cam_rgb_link"/>
+    <joint name="cam_rgb_joint" type="fixed">
+      <parent link="cam_link"/>
+      <child link="cam_rgb_link"/>
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.0125"/>
+       <axis xyz="0 0 1"/>
+       <limit effort="30" lower="-3.14" upper="3.14" velocity="1.571"/>
+    </joint>
+
+  </xacro:macro>
+</robot>
