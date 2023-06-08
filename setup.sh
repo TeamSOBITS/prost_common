@@ -13,17 +13,17 @@ sudo apt-get install -y \
 sudo add-apt-repository -y \
     ppa:ubuntuhandbook1/ppa
 
- sudo apt install -y \
-     libusb-dev \
-     libftdi-dev \
-     libavahi-client-dev \
-     pyqt5-dev-tools
-#     mongodb \
-#     mongodb-dev \
-#     python3-pip \
-#     git \
-#     libqt4-dev \
-#     libavahi-common-dev \
+sudo apt install -y \
+    libusb-dev \
+    libftdi-dev \
+    libavahi-client-dev \
+    pyqt5-dev-tools
+    mongodb \
+    mongodb-dev \
+    python3-pip \
+    git \
+    libqt4-dev \
+    libavahi-common-dev
 
 
 python3 -m pip install -U \
