@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>rocon_app_manager</name>
+	<comment></comment>
+	<projects>
+		<project>rocon_app_utilities</project>
+		<project>rocon_console</project>
+		<project>rocon_gateway_utils</project>
+		<project>rocon_msgs</project>
+		<project>rocon_python_comms</project>
+		<project>rocon_python_utils</project>
+		<project>rocon_uri</project>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.python.pydev.PyDevBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.python.pydev.pythonNature</nature>
+	</natures>
+</projectDescription>

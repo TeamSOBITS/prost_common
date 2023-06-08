@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>capabilities</name>
+  <version>0.3.1</version>
+  <description>
+    Package which implements capabilities, including code to parse capability interface specs, to parse capability provider specs, and implement the capability server.
+  </description>
+
+  <maintainer email="william@osrfoundation.org">William Woodall</maintainer>
+  <license>BSD</license>
+
+  <url type="website">http://wiki.ros.org/capabilities</url>
+  <url type="repository">https://github.com/osrf/capabilities</url>
+  <url type="bugtracker">https://github.com/osrf/capabilities/issues</url>
+
+  <author email="william@osrfoundation.org">William Woodall</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+  <build_depend>roslaunch</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>rostest</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>std_srvs</build_depend>
+
+  <build_export_depend>message_runtime</build_export_depend>
+
+  <exec_depend>bondpy</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <exec_depend>nodelet</exec_depend>
+  <exec_depend condition="$ROS_PYTHON_VERSION == 2">python-yaml</exec_depend>
+  <exec_depend condition="$ROS_PYTHON_VERSION == 3">python3-yaml</exec_depend>
+  <exec_depend>roslaunch</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+
+  <test_depend>geometry_msgs</test_depend>
+  <test_depend condition="$ROS_PYTHON_VERSION == 2">python-coverage</test_depend>
+  <test_depend condition="$ROS_PYTHON_VERSION == 3">python3-coverage</test_depend>
+  <test_depend condition="$ROS_PYTHON_VERSION == 2">python-mock</test_depend>
+  <test_depend condition="$ROS_PYTHON_VERSION == 3">python3-mock</test_depend>
+  <test_depend condition="$ROS_PYTHON_VERSION == 2">python-pycodestyle</test_depend>
+  <test_depend condition="$ROS_PYTHON_VERSION == 3">python3-pycodestyle</test_depend>
+  <test_depend>rosservice</test_depend>
+
+  <export>
+    <architecture_independent/>
+    <rosdoc config="rosdoc.yaml"/>
+  </export>
+
+</package>

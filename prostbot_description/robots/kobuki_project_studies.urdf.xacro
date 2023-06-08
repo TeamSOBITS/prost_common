@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    - Base      : kobuki
+    - Stacks    : hexagons
+    - 3d Sensor : kinect
+-->
+<robot name="prostbot" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:include filename="$(find prostbot_description)/urdf/turtlebot_common_library.urdf.xacro" />
+  <xacro:include filename="$(find prostbot_description)/urdf/base.urdf.xacro" />
+  <xacro:include filename="$(find kobuki_description)/urdf/kobuki.urdf.xacro" />
+  <xacro:include filename="$(find prostbot_description)/urdf/stacks/hexagons.urdf.xacro"/>
+  <xacro:include filename="$(find prostbot_description)/urdf/kobuki_gazebo.urdf.xacro"/>
+
+  <!-- robot name from base.urdf.xacro -->
+  <!-- melodicまでは<kobuki/>という書き方をする．noeticからは先頭にxacro:と明記する必要がある -->
+  <xacro:kobuki/>
+  <xacro:stack_hexagons                 parent="base_link"/>
+  <xacro:base/>
+  <!-- robot name from hexagons.urdf.xacro -->
+  
+  <!-- robot name from asus_xtion_pro_offset.urdf.xacro -->
+  <!-- <xacro:sensor_asus_xtion_pro_offset   parent="base_link"/> -->
+  
+</robot>

@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+
+import sys
+
+try:
+    from coverage.cmdline import main
+except ImportError as exc:
+    sys.exit("Error: failed to run coverage: {0}".format(exc))
+
+if __name__ == '__main__':
+    sys.exit(main())

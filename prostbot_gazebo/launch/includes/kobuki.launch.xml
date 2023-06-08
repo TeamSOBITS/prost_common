@@ -1,14 +1,28 @@
 <launch>
+
+  <!-- Please change the position parameters to change the initial position -->
+  <arg name="x" default="0"/>
+  <arg name="y" default="0"/>
+  <arg name="yaw" default="-3.14"/>
+
+
+  <!-- Do not change the following settings manually (it would be an error or look so weird) -->
   <arg name="base"/>
   <arg name="stacks"/>
   <arg name="3d_sensor"/>
 
-  <arg name="urdf_file" default="$(find xacro)/xacro '$(find prostbot_description)/robots/kobuki_hexagons_asus_xtion_pro_offset.urdf.xacro'"/>
+  <arg name="z" default="0"/>
+  <arg name="roll" default="0"/>
+  <arg name="pitch" default="0"/>
+
+  <arg name="urdf_file" default="$(find xacro)/xacro '$(find prostbot_description)/robots/kobuki_project_studies.urdf.xacro'"/>
   <param name="robot_description" command="$(arg urdf_file)" />
 
   <!-- Gazebo model spawner -->
   <node name="spawn_turtlebot_model" pkg="gazebo_ros" type="spawn_model"
-        args="$(optenv ROBOT_INITIAL_POSE) -unpause -urdf -param robot_description -model mobile_base"/>
+        args="-unpause -urdf -param robot_description -model mobile_base 
+        -x $(arg x) -y $(arg y) -z $(arg z)
+        -R $(arg roll) -P $(arg pitch) -Y $(arg yaw)"/>
 
   <!-- Velocity muxer -->
   <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
