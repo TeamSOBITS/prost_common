@@ -4,10 +4,8 @@
 import rospy
 import cv2
 import pyzbar.pyzbar as pyzbar
-import PIL.Image
-import numpy as np
-from std_msgs.msg import String, UInt8, Empty, Bool
-from sensor_msgs.msg import LaserScan, Image
+from std_msgs.msg import String
+from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
 
@@ -27,29 +25,22 @@ class QrRecode:
             cv_image = self.bridge_qr.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e)
-
-        # input image
-        img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+            return
 
         # grayscale
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
 
         # Binarization
         tresh = 100
         max_pixel = 255
         ret, img = cv2.threshold(img, tresh, max_pixel, cv2.THRESH_BINARY)
 
-        # picture change PIL
-        pil_img = PIL.Image.fromarray(img)
-        width, height = pil_img.size
-        #raw = pil_img.tobytes() #今だけコメントアウト
-
         # result
-        decoded = pyzbar.decode(img) #今だけraw→img
+        decoded = pyzbar.decode(img)
 
         word = ""
         for d in decoded:
-            word = str(d.data)
+            word = d.data.decode('utf-8')
 
         word = "qr_recode:" + word
         self.pub_ros_scratch.publish(String(word))
