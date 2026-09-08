@@ -11,8 +11,6 @@ from cv_bridge import CvBridge, CvBridgeError
 
 #HSVでの色名判定しきい値 (H:度数0-360, S/V:0-255)
 BLACK_V_MAX = 60
-WHITE_S_MAX = 40
-WHITE_V_MIN = 200
 RED_H_MAX = 25
 RED_H_MIN_WRAP = 330
 YELLOW_H_MIN = 25
@@ -35,18 +33,16 @@ PURPLE_H_MAX = 280
 OPENCV_HUE_TO_DEGREES = 2
 
 #色判定モード切り替え ("hsv" または "rgb" に書き換えて切り替える)
-COLOR_MODE = "rgb"
+COLOR_MODE = "hsv"
 
 #RGBでの色名判定しきい値 (0-255)
 RGB_BLACK_MAX = 50
-RGB_WHITE_MIN = 150
-RGB_WHITE_MAX = 200
 RGB_RED_OTHER_MAX = 100
 RGB_BLUE_GREEN_R_MAX = 50
 RGB_YELLOW_MIN = 150
 
-ROI_HEIGHT_MIN = 200
-ROI_HEIGHT_MAX = 280
+ROI_HEIGHT_MIN = 220
+ROI_HEIGHT_MAX = 260
 ROI_WIDTH_MIN = 300
 ROI_WIDTH_MAX = 340
 
@@ -58,8 +54,6 @@ def map_hsv_to_color_name(H, S, V):
 
 	if V < BLACK_V_MAX:
 		return "黒"
-	if S < WHITE_S_MAX and V > WHITE_V_MIN:
-		return "白"
 	if (0 <= H < RED_H_MAX) or (RED_H_MIN_WRAP <= H <= 360):
 		return "赤"
 	if YELLOW_H_MIN <= H < YELLOW_H_MAX and S > YELLOW_S_MIN:
@@ -80,8 +74,6 @@ def map_rgb_to_color_name(r, g, b):
 	""" 従来の RGB 判定ルール """
 	if b < RGB_BLACK_MAX and g < RGB_BLACK_MAX and r < RGB_BLACK_MAX:
 		return "黒"
-	elif RGB_WHITE_MIN < b < RGB_WHITE_MAX and RGB_WHITE_MIN < g < RGB_WHITE_MAX and RGB_WHITE_MIN < r < RGB_WHITE_MAX:
-		return "白"
 	elif r > g and r > b and g < RGB_RED_OTHER_MAX and b < RGB_RED_OTHER_MAX:
 		return "赤"
 	elif b > g and b > r and r < RGB_BLUE_GREEN_R_MAX:
@@ -117,6 +109,7 @@ class RGBAverage:
 		self.r = []
 
 		self.pub_ros_scratch = rospy.Publisher('/ros_scratch', String, queue_size = PUBLISHER_QUEUE_SIZE)#scratchへ送るメッセージ
+		self.pub_roi_drawing = rospy.Publisher('/rgb_average_value/roi_image', Image, queue_size = PUBLISHER_QUEUE_SIZE)#参照範囲を可視化した画像
 		self.image_sub_rgb = rospy.Subscriber("/usb_cam/image_raw",Image,self.image_rgb_ave)
 
 	def image_rgb_ave(self, ros_image):
@@ -165,9 +158,13 @@ class RGBAverage:
 				H_deg = int(h_ave) * OPENCV_HUE_TO_DEGREES
 				color_name = map_hsv_to_color_name(H_deg, int(s_ave), int(v_ave))
 				word_color = "image_common_color_hsv:" + color_name
-				#rospy.loginfo("H_deg:%d S:%d V:%d -> %s", H_deg, int(s_ave), int(v_ave), color_name)
+				rospy.loginfo("H_deg:%d S:%d V:%d -> %s", H_deg, int(s_ave), int(v_ave), color_name)
 			self.pub_ros_scratch.publish(word_color)
 
+			#参照しているROIを矩形で描いて可視化
+			roi_drawing_image = frame.copy()
+			cv2.rectangle(roi_drawing_image, (self.width_min_range, self.height_min_range), (self.width_max_range, self.height_max_range), (0, 255, 255), 2)
+			self.pub_roi_drawing.publish(self.bridge_image_rgb_ave.cv2_to_imgmsg(roi_drawing_image, "bgr8"))
 
 			#initialization
 			self.b = []
