@@ -1,441 +1,330 @@
 #!/usr/bin/env python3
 # coding: utf-8
-import rospy
-import tf
+
+import os
 import math
 import time
-from tf.transformations import euler_from_quaternion
+import datetime
+import numpy as np
+import matplotlib.pyplot as plt
+
+import rclpy
+from rclpy.node import Node
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist
 from std_msgs.msg import String, Empty
 from nav_msgs.msg import Odometry
 
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-import datetime
+from tf2_ros import Buffer, TransformListener, TransformException
 
 
-#indent = 1 tabs
-# S:1000	(1000cm直進)
-# T:90		(90度回転、反時計回り正回転)
-
-###############################################################################
-
-class OdomBaseController:
-	def __init__(self):
-		self.listener = tf.TransformListener()
-
-		#回転制御パラメータ//各自調整
-		self.turn_acs = 1	#加速度(初期：0.5)
-		self.turn_speed_max = 150	#最高速度(初期：20)
-		self.turn_speed_min = 0
-		self.turn_ki = 0.15
-		#直進制御パラメータ//各自調整
-		self.stlight_acs = 0.01 		#加速度(デフォルト：0.01)
-		self.stlight_speed_max = 0.4 	#最高速度(デフォルト：0.2m/s)
-		self.stlight_speed_min = 0		#最低速度(デフォルト:0m/s)
-		self.stlight_ki = 0.1			#積分係数
-
-		#ループ周期設定
-		self.sleep_vale = 0.030
-
-		#台形制御のグラフ描画用
-		self.graph_x = []
-		self.graph_y = []
-
-		#速度更新時間計測
-		self.start_measurement_time = 0
-		self.speed_update_time = 0
-		self.period_time = 0
-		self.speed_start_flag = False
-
-		#初期化
-		self.speed = 0
-		self.speed_max = 0
-		self.speed_min = 0
-		self.before_speed = 0
-		self.current_speed = 0
-		self.current_pose_x = 0
-		self.current_pose_y = 0
-		self.current_angle = 0
-		self.before_pose_x = 0
-		self.before_pose_y = 0
-		self.before_angle = 0
-		self.order_vale = 0
-		self.moved_vale = 0
-		self.error_P = 0
-		self.error_I = 0
-		self.move_order_T = False
-		self.move_order_S = False
-		self.stop_flag = False
+def euler_from_quaternion(q):
+    """
+    クォータニオン [x, y, z, w] からオイラー角 (roll, pitch, yaw) を計算する関数
+    """
+    x, y, z, w = q
+    siny_cosp = 2.0 * (w * z + x * y)
+    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+    yaw = math.atan2(siny_cosp, cosy_cosp)
+    return 0.0, 0.0, yaw
 
 
-		self.pub_twist = rospy.Publisher('/mobile_base/commands/velocity', Twist, queue_size=10)
-		self.pub_output_log = rospy.Publisher('/odom_base/output_log', String, queue_size=10)
-		self.pub_reset_odometry = rospy.Publisher('/mobile_base/commands/reset_odometry', Empty, queue_size=10)
-		self.pub_retrun_arrive = rospy.Publisher('/retrun_arrive', String, queue_size=10)
+class OdomBaseController(Node):
+    def __init__(self):
+        super().__init__('odom_base_controller')
 
-		self.sub_motion_stop = rospy.Subscriber('/motion_stop',String, self.motion_stop)
-		self.sub_odom_base_ctrl = rospy.Subscriber('/odom_base_ctrl',String, self.odom_base_ctrl)
+        # TF2 の設定
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
-		rospy.loginfo("odom_base_controller is OK.")
+        # 回転制御パラメータ
+        self.turn_acs = 1.0            # 加速度
+        self.turn_speed_max = 150.0    # 最高速度
+        self.turn_speed_min = 0.0
+        self.turn_ki = 0.15
 
+        # 直進制御パラメータ
+        self.stlight_acs = 0.01        # 加速度
+        self.stlight_speed_max = 0.4    # 最高速度
+        self.stlight_speed_min = 0.0   # 最低速度
+        self.stlight_ki = 0.1          # 積分係数
 
-	def Check_Command(self, line):
-		#print("チェックコマンド!!!")
-		cmd_line = line.data[0:2]
-		value_line = line.data[2:len(line.data)]
-		for i in range(len(cmd_line)):
-			key = cmd_line[i]
-			if key == 'T' or key == 'S' or key == ':':
-				#print "Check ok-1"
-				pass
-			else:
-				rospy.loginfo("check_command cmd error")
-				rospy.loginfo(line.data)
-				return False
-		for i in range(len(value_line)):
-			key = value_line[i]
-			if key >= '0' and key <= '9' or key == '-' or key == '.':
-				#print "Check ok-2"
-				pass
-			else:
-				rospy.loginfo("check_command cmd error")
-				rospy.loginfo(line.data)
-				return False
-		return True
+        # ループ周期設定 (秒)
+        self.sleep_vale = 0.030
 
-	def Read_Value(self, line):
-		#print("値の読み込み！！！")
-		value_str = line.data[2:len(line.data)]
-		value = float(value_str)
-		return value
+        # 台形制御のグラフ描画用
+        self.graph_x = []
+        self.graph_y = []
 
-	def motion_stop(self,data):
-		#print("-- get stop flag")
-		self.stop_flag = True
+        # 速度更新時間計測
+        self.start_measurement_time = 0.0
+        self.speed_update_time = 0.0
+        self.period_time = 0.0
+        self.speed_start_flag = False
 
-	def odom_base_ctrl(self,motion):
-		#rospy.loginfo("move_order_T: %s" % (self.move_order_T))
-		#rospy.loginfo("move_order_S: %s" % (self.move_order_S))
-		if self.move_order_T == True or self.move_order_S == True:
-			rospy.loginfo("Sorry, the action is not registered.")
-			return "False"
-		check = self.Check_Command(motion)
-		if check == False:
-			rospy.loginfo("The command cannot be carried out.")
-			return "False"
-		else:
-			if "T" in motion.data:
-				self.order_vale = self.Read_Value(motion)
-				self.move_order_T = True
-				rospy.loginfo("order: Turn: %f(deg)" % (self.order_vale))
-				#注意：描画するとループ周期が長くなる
-				#グラフ描画準備①
-				"""
-				title = str(self.order_vale)
-				fig = plt.figure()
-				print("---ここでセグメントフォルス---")
-				plt.title("order_vale: " + title + " (deg)")
-				plt.ylabel("speed[rad/sec]")
-				"""
-			elif "S" in motion.data:
-				self.order_vale = self.Read_Value(motion)#cm
-				self.move_order_S = True
-				rospy.loginfo("order: Straight: %f(cm)" % (self.order_vale))
-				#グラフ描画準備①
-				"""
-				title = str(self.order_vale)
-				fig = plt.figure()
-				plt.title("order_vale: " + title + " (cm)")
-				plt.ylabel("speed[m/sec]")
-				"""
-		if self.move_order_T == True and self.move_order_S == False:
-			#回転制御パラメータ
-			self.speed_acs = self.turn_acs
-			self.speed_max = self.turn_speed_max
-			self.speed_min = self.turn_speed_min
-			self.ki = self.turn_ki
-		elif self.move_order_T == False and self.move_order_S == True:
-			#直進制御パラメータ
-			self.speed_acs = self.stlight_acs
-			self.speed_max = self.stlight_speed_max
-			self.speed_min = self.stlight_speed_min
-			self.ki = self.stlight_ki
+        # 初期化
+        self.speed = 0.0
+        self.speed_max = 0.0
+        self.speed_min = 0.0
+        self.before_speed = 0.0
+        self.current_speed = 0.0
+        self.current_pose_x = 0.0
+        self.current_pose_y = 0.0
+        self.current_angle = 0.0
+        self.before_pose_x = 0.0
+        self.before_pose_y = 0.0
+        self.before_angle = 0.0
+        self.order_vale = 0.0
+        self.moved_vale = 0.0
+        self.error_P = 0.0
+        self.error_I = 0.0
+        self.move_order_T = False
+        self.move_order_S = False
+        self.stop_flag = False
 
-		#現在のエンコーダ値を保存//プログラム内に保存していたエンコーダ値を更新（学生が素手でロボットを動かす時があるため、エンコーダ値が変化するため）
-		(trans,rot) = self.listener.lookupTransform('/base_link', '/odom', rospy.Time(0))
-		euler = tf.transformations.euler_from_quaternion((rot[0],rot[1],rot[2],rot[3]))
-		#現在位置代入
-		self.before_pose_x = trans[0] * 100#[cm]
-		self.before_pose_y = trans[1] * 100#[cm]
-		self.before_angle = math.degrees(euler[2])#[deg]
-		rospy.loginfo("--開始地点のエンコーダ値: x:%f y:%f angle:%f", self.before_pose_x, self.before_pose_y, self.before_angle)
+        # パブリッシャーとサブスクライバーの設定
+        self.pub_twist = self.create_publisher(Twist, '/mobile_base/commands/velocity', 10)
+        self.pub_output_log = self.create_publisher(String, '/odom_base/output_log', 10)
+        self.pub_reset_odometry = self.create_publisher(Empty, '/mobile_base/commands/reset_odometry', 10)
+        self.pub_retrun_arrive = self.create_publisher(String, '/retrun_arrive', 10)
 
-		#グラフ描画準備②
-		"""
-		plt.xlabel("time[sec]")
-		self.graph_x.append(0)
-		self.graph_y.append(0)
-		ax = fig.add_subplot(1, 1, 1)
-		ax.plot(self.graph_x, self.graph_y)
-		"""
+        self.sub_motion_stop = self.create_subscription(String, '/motion_stop', self.motion_stop, 10)
+        self.sub_odom_base_ctrl = self.create_subscription(String, '/odom_base_ctrl', self.odom_base_ctrl, 10)
 
-		while True:
-			time.sleep(self.sleep_vale)
-			send_cmd = Twist()#メッセージ変数の宣言
-			#rospy.loginfo("move_order_T: %s" % (self.move_order_T))
-			#rospy.loginfo("move_order_S: %s" % (self.move_order_S))
+        # ROS 2 ではコールバック内で無限ループを回すと通信がブロックされるため、タイマー駆動に変更
+        self.timer = self.create_timer(self.sleep_vale, self.control_loop)
 
+        self.get_logger().info("odom_base_controller is OK.")
 
-##########################################################################################################################################
-			if self.move_order_T == False and self.move_order_S == False:
-				#rospy.loginfo("move order flag False")
-				self.pub_twist.publish(Twist())#停止
-				break
-			elif self.stop_flag == True:#動作中止判定
-				self.stop_flag = False#初期化
-				self.speed = 0
-				self.current_speed = 0
-				self.order_vale = 0
-				self.moved_vale = 0
-				self.error_P = 0
-				self.error_I = 0
-				self.move_order_S = False
-				self.move_order_T = False
-				self.pub_twist.publish(Twist())#停止
-				rospy.loginfo("stop flag True")
-				break
-			else:
-				#加速区間
-				if self.moved_vale < abs(self.order_vale) / 5:
-					self.speed += self.speed_acs
-					self.current_speed = self.speed
-					#rospy.loginfo("加速区間 %f"%(self.speed))
-				#減速区間
-				elif self.moved_vale > abs(self.order_vale) * 4 / 5:
-						#PI制御
-						self.before_speed = self.speed	#前回パブリッシュした速度を保存
-						if self.speed > self.error_I:    #現在のスピードが積分係数より小さい時
-							self.error_P = (abs(self.order_vale) - self.moved_vale) / (abs(self.order_vale) / 5)#小さくなる
-							self.speed = self.current_speed * self.error_P + self.error_I#小さくなる
-							self.error_I += (self.before_speed - self.speed)*self.ki#小さくなる
-							#print "error_T_I=%f" % self.error_T_I
-						elif self.speed <= self.error_I:
-							self.speed = self.error_I
-						else:
-							pass
-						#rospy.loginfo("減速区間 %f"%(self.speed))
-				#等速区間
-				else:
-					#rospy.loginfo("等速区間 %f"%(self.speed))
-					pass
+    def Check_Command(self, line):
+        cmd_line = line.data[0:2]
+        value_line = line.data[2:len(line.data)]
+        for key in cmd_line:
+            if key not in ['T', 'S', ':']:
+                self.get_logger().info(f"check_command cmd error: {line.data}")
+                return False
+        for key in value_line:
+            if not (('0' <= key <= '9') or key == '-' or key == '.'):
+                self.get_logger().info(f"check_command cmd error: {line.data}")
+                return False
+        return True
 
-				#最高速度補正
-				if self.speed >= self.speed_max:
-					self.speed = self.speed_max
-					#rospy.loginfo("最高速度補正 %f"%(self.speed))
-				#逆走防止
-				if self.speed < self.speed_min:
-					self.speed = self.speed_min
-					#rospy.loginfo("逆走防止 %f"%(self.speed))
+    def Read_Value(self, line):
+        value_str = line.data[2:len(line.data)]
+        return float(value_str)
 
+    def motion_stop(self, data):
+        self.stop_flag = True
 
-				#print('speed:' + str(self.speed))
+    def get_current_tf(self):
+        """odom -> base_link の TF を取得するヘルパー関数"""
+        try:
+            # ROS 2 ではフレーム名の先頭スラッシュ ('/') は含めません
+            trans = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
+            x = trans.transform.translation.x * 100.0  # [cm]
+            y = trans.transform.translation.y * 100.0  # [cm]
+            rot = trans.transform.rotation
+            _, _, yaw = euler_from_quaternion([rot.x, rot.y, rot.z, rot.w])
+            angle = math.degrees(yaw)  # [deg]
+            return x, y, angle
+        except TransformException as ex:
+            self.get_logger().warn(f"Could not transform odom to base_link: {ex}")
+            return None, None, None
 
+    def odom_base_ctrl(self, motion):
+        if self.move_order_T or self.move_order_S:
+            self.get_logger().info("Sorry, the action is not registered.")
+            return
 
-##########################################################################################################################################
-				if self.move_order_T == True and self.move_order_S == False:
-					if self.order_vale > 0:
-						send_cmd.angular.z = math.radians(-self.speed)
-					else:#時計回り
-						send_cmd.angular.z = math.radians(self.speed)
-					#rospy.loginfo("Turn send_cmd: %f"%(send_cmd.angular.z))
+        check = self.Check_Command(motion)
+        if not check:
+            self.get_logger().info("The command cannot be carried out.")
+            return
 
-					if self.speed_start_flag == True:
-						#速度更新周期算出
-						self.period_time = time.time() - self.speed_update_time
-						#rospy.loginfo("速度更新周期: %f[sec]"%(self.period_time))
-					if self.moved_vale < abs(self.order_vale):
-						self.pub_twist.publish(send_cmd)
-						#速度更新時間計測開始
-						self.speed_update_time = time.time()
-						if self.speed_start_flag == False:
-							self.start_measurement_time = time.time()
-							self.speed_start_flag = True
-						#グラフを表示
-						"""
-						elapsed_time = time.time() - self.start
-						#rospy.loginfo("現在時間:%f[sec]",time.time())
-						#rospy.loginfo("time:%f[sec]",elapsed_time)
-						#rospy.loginfo("speed:%f[rad/sec]",abs(send_cmd.angular.z))
-						#rospy.loginfo("speed_2:%f",self.speed)
-						self.graph_x.append(elapsed_time)
-						self.graph_y.append(abs(send_cmd.angular.z))
-						ax.plot(self.graph_x, self.graph_y, marker="o", color = "red", linestyle = "--")
-						plt.pause(.01)
-						"""
-						#現在位置代入
-						(trans,rot) = self.listener.lookupTransform('/base_link', '/odom', rospy.Time(0))
-						euler = tf.transformations.euler_from_quaternion((rot[0],rot[1],rot[2],rot[3]))
-						self.current_pose_x = trans[0] * 100#[cm]
-						self.current_pose_y = trans[1] * 100#[cm]
-						self.current_angle = math.degrees(euler[2])#[deg]
-						#rospy.loginfo("-エンコーダ値- x: %f[cm] y: %f[cm] angle: %f[deg]",self.current_pose_x, self.current_pose_y, self.current_angle )
-						#rospy.loginfo("          order_vale: %f moved_vale: %f",self.order_vale , self.moved_vale)
-						#移動角度算出
-						sub_point = abs(self.current_angle - self.before_angle)#例：開始角度350 終了角度10→移動角度20を算出する際使用//この処理がないと340が移動角度になる  ☆最後の測定量(before_angle)が間違っていた!//外乱（生徒がロボットを素手で動かす）
-						if sub_point > 180:
-							sub_point = abs(sub_point - 360)
-						self.moved_vale += sub_point#加算 ☆移動量が間違っていた
-						rospy.loginfo("現在の回転角度:%f[deg]", self.moved_vale)
-						rospy.loginfo(" ")
-						#開始地点保存
-						self.before_pose_x = self.current_pose_x
-						self.before_pose_y = self.current_pose_y
-						self.before_angle = self.current_angle
-					else:
-						self.period_time = time.time() - self.speed_update_time
-						#rospy.loginfo("速度更新周期: %f[sec]"%(self.period_time))
-						self.pub_twist.publish(Twist())#停止
-						all_time = time.time() - self.start_measurement_time
-						#print(" ")
-						print ("総回転時間 :"+ str(all_time) + "[sec]")
-						#print(" ")
-						#台形制御のグラフの保存
-						"""
-						elapsed_time = time.time() - self.start_time
-						print ("処理終了時間:"+ format(elapsed_time) + "[sec]")
-						self.graph_x.append(elapsed_time)
-						self.graph_y.append(0)
-						ax.plot(self.graph_x, self.graph_y, marker="o", color = "red", linestyle = "--")
-						dt_now = datetime.datetime.now()
-						file_name = str(dt_now)
-						plt.savefig(os.path.join(os.path.abspath(".") + "/catkin_ws/src/prost_scratch/png/", "figure_" + file_name + ".png"))
-						plt.close(fig)
-						"""
-						#rospy.loginfo("finished")
-						self.speed = 0
-						self.current_speed = 0
-						self.order_vale = 0
-						self.moved_vale = 0
-						self.error_P = 0
-						self.error_I = 0
-						self.move_order_T = False
-						self.speed_start_flag =  False
-						self.graph_x = []
-						self.graph_y = []
-						output_log = str(self.order_vale) + "_finished"
-						self.pub_output_log.publish(output_log)
-						#到着合図
-						end = String()
-						end.data = "move end"
-						self.pub_retrun_arrive.publish(end)
+        if "T" in motion.data:
+            self.order_vale = self.Read_Value(motion)
+            self.move_order_T = True
+            self.get_logger().info(f"order: Turn: {self.order_vale:f}(deg)")
+        elif "S" in motion.data:
+            self.order_vale = self.Read_Value(motion)  # cm
+            self.move_order_S = True
+            self.get_logger().info(f"order: Straight: {self.order_vale:f}(cm)")
 
+        if self.move_order_T and not self.move_order_S:
+            self.speed_acs = self.turn_acs
+            self.speed_max = self.turn_speed_max
+            self.speed_min = self.turn_speed_min
+            self.ki = self.turn_ki
+        elif not self.move_order_T and self.move_order_S:
+            self.speed_acs = self.stlight_acs
+            self.speed_max = self.stlight_speed_max
+            self.speed_min = self.stlight_speed_min
+            self.ki = self.stlight_ki
 
-##########################################################################################################################################
-				elif self.move_order_T == False and self.move_order_S == True:
-					if self.order_vale > 0:
-						send_cmd.linear.x = self.speed #m/sec
-					else:
-						send_cmd.linear.x = -self.speed #m/sec
-					#rospy.loginfo("stlight send_cmd: %f"%(send_cmd.linear.x))
+        # 開始地点の TF 値を取得
+        x, y, angle = self.get_current_tf()
+        if x is not None:
+            self.before_pose_x = x
+            self.before_pose_y = y
+            self.before_angle = angle
+            self.get_logger().info(
+                f"--開始地点のエンコーダ値: x:{self.before_pose_x:f} y:{self.before_pose_y:f} angle:{self.before_angle:f}"
+            )
 
-					if self.moved_vale < abs(self.order_vale):
-						if self.speed_start_flag == True:
-							#速度更新周期算出
-							self.period_time = time.time() - self.speed_update_time
-							#rospy.loginfo("速度更新周期: %f[sec]"%(self.period_time))
-						#☆速度更新時間計測開始
-						self.pub_twist.publish(send_cmd)
-						self.speed_update_time = time.time()
-						if self.speed_start_flag == False:
-							self.start_measurement_time = time.time()
-							self.speed_start_flag = True
+    def reset_state(self):
+        """ステートの初期化処理"""
+        self.speed = 0.0
+        self.current_speed = 0.0
+        self.order_vale = 0.0
+        self.moved_vale = 0.0
+        self.error_P = 0.0
+        self.error_I = 0.0
+        self.move_order_T = False
+        self.move_order_S = False
+        self.speed_start_flag = False
+        self.graph_x = []
+        self.graph_y = []
 
-						#グラフを表示
-						"""
-						elapsed_time = time.time() - self.start
-						rospy.loginfo("現在時間:%f[sec]",time.time())
-						rospy.loginfo("time:%f[sec]",elapsed_time)
-						rospy.loginfo("speed:%f[m/sec]",abs(send_cmd.linear.x))
-						#rospy.loginfo("speed_2:%f",self.speed)
-						self.graph_x.append(elapsed_time)
-						self.graph_y.append(abs(send_cmd.linear.x))
-						ax.plot(self.graph_x, self.graph_y, marker="o", color = "blue", linestyle = "--")
-						plt.pause(.01)
-						"""
+    def control_loop(self):
+        """タイマーで 0.03秒毎に定期実行される制御メインループ"""
+        # 移動命令が出ていないときは何もしない
+        if not self.move_order_T and not self.move_order_S:
+            return
 
-						#現在位置代入
-						(trans,rot) = self.listener.lookupTransform('/base_link', '/odom', rospy.Time(0))
-						euler = tf.transformations.euler_from_quaternion((rot[0],rot[1],rot[2],rot[3]))
-						self.current_pose_x = trans[0] * 100#[cm]
-						self.current_pose_y = trans[1] * 100#[cm]
-						self.current_angle = math.degrees(euler[2])#[deg]
-						#rospy.loginfo("-エンコーダ値- x: %f[cm] y: %f[cm] angle: %f[deg]",self.current_pose_x, self.current_pose_y, self.current_angle )
-						#rospy.loginfo("          order_vale: %f moved_vale: %f",self.order_vale , self.moved_vale)
-						#移動距離算出
-						sub_x = self.before_pose_x - self.current_pose_x
-						sub_y = self.before_pose_y - self.current_pose_y
-						self.moved_vale = math.hypot(sub_x,sub_y)
-						rospy.loginfo("現在の移動距離: %f[cm]", self.moved_vale)
-						rospy.loginfo(" ")
-					else:
-						self.period_time = time.time() - self.speed_update_time
-						#rospy.loginfo("速度更新周期: %f[sec]"%(self.period_time))
-						self.pub_twist.publish(Twist())#停止
-						#rospy.loginfo("速度更新周期: %f[sec]"%(self.period_time))
-						all_time = time.time() - self.start_measurement_time
-						#print(" ")
-						print ("総移動時間:"+ str(all_time) + "[sec]")
-						#print(" ")
-						#台形制御のグラフの保存
-						"""
-						elapsed_time = time.time() - self.start
-						print ("処理終了時間:"+ format(elapsed_time) + "[sec]")
-						#台形制御のグラフの保存
-						self.graph_x.append(elapsed_time)
-						self.graph_y.append(0)
-						ax.plot(self.graph_x, self.graph_y, marker="o", color = "blue", linestyle = "--")
-						dt_now = datetime.datetime.now()
-						file_name = str(dt_now)
-						plt.savefig(os.path.join(os.path.abspath(".") + "/catkin_ws/src/prost_scratch/png/", "figure_" + file_name + ".png"))
-						plt.close(fig)
-						"""
-						self.speed = 0
-						self.current_speed = 0
-						self.order_vale = 0
-						self.moved_vale = 0
-						self.error_P = 0
-						self.error_I = 0
-						self.graph_x = []
-						self.graph_y = []
-						self.move_order_S = False
-						self.speed_start_flag = False
-						output_log = str(self.order_vale) + "_finished"
-						#到着合図
-						end = String()
-						end.data = "move end"
-						self.pub_retrun_arrive.publish(end)
-		#/odom初期化#確認
-		reset_val = Empty()
-		#self.pub_reset_odometry.publish(reset_val)
-		rospy.sleep(0.1)
-		rospy.loginfo("Moving Finished")
-		#ラズパイ側自動git pull確認用コメント--最終確認
-		#rospy.loginfo("---- %s" % motion.data)
+        send_cmd = Twist()
+
+        # 動作中止判定
+        if self.stop_flag:
+            self.stop_flag = False
+            self.reset_state()
+            self.pub_twist.publish(Twist())  # 停止
+            self.get_logger().info("stop flag True")
+            return
+
+        # 加減速計算 (台形制御)
+        if self.moved_vale < abs(self.order_vale) / 5.0:
+            # 加速区間
+            self.speed += self.speed_acs
+            self.current_speed = self.speed
+        elif self.moved_vale > abs(self.order_vale) * 4.0 / 5.0:
+            # 減速区間
+            self.before_speed = self.speed
+            if self.speed > self.error_I:
+                self.error_P = (abs(self.order_vale) - self.moved_vale) / (abs(self.order_vale) / 5.0)
+                self.speed = self.current_speed * self.error_P + self.error_I
+                self.error_I += (self.before_speed - self.speed) * self.ki
+            elif self.speed <= self.error_I:
+                self.speed = self.error_I
+        else:
+            # 等速区間
+            pass
+
+        # 速度上限・下限補正
+        if self.speed >= self.speed_max:
+            self.speed = self.speed_max
+        if self.speed < self.speed_min:
+            self.speed = self.speed_min
+
+        # --- 回転制御 ---
+        if self.move_order_T and not self.move_order_S:
+            if self.order_vale > 0:
+                send_cmd.angular.z = math.radians(-self.speed)
+            else:
+                send_cmd.angular.z = math.radians(self.speed)
+
+            if self.speed_start_flag:
+                self.period_time = time.time() - self.speed_update_time
+
+            if self.moved_vale < abs(self.order_vale):
+                self.pub_twist.publish(send_cmd)
+                self.speed_update_time = time.time()
+                if not self.speed_start_flag:
+                    self.start_measurement_time = time.time()
+                    self.speed_start_flag = True
+
+                # 現在値のTF更新
+                x, y, angle = self.get_current_tf()
+                if x is not None:
+                    self.current_pose_x = x
+                    self.current_pose_y = y
+                    self.current_angle = angle
+
+                    sub_point = abs(self.current_angle - self.before_angle)
+                    if sub_point > 180:
+                        sub_point = abs(sub_point - 360)
+                    self.moved_vale += sub_point
+                    self.get_logger().info(f"現在の回転角度:{self.moved_vale:f}[deg]")
+
+                    self.before_pose_x = self.current_pose_x
+                    self.before_pose_y = self.current_pose_y
+                    self.before_angle = self.current_angle
+            else:
+                self.pub_twist.publish(Twist())  # 停止
+                all_time = time.time() - self.start_measurement_time
+                print(f"総回転時間 :{all_time}[sec]")
+
+                saved_order_vale = self.order_vale
+                self.reset_state()
+
+                output_log = f"{saved_order_vale}_finished"
+                msg_log = String()
+                msg_log.data = output_log
+                self.pub_output_log.publish(msg_log)
+
+                end = String()
+                end.data = "move end"
+                self.pub_retrun_arrive.publish(end)
+
+        # --- 直進制御 ---
+        elif not self.move_order_T and self.move_order_S:
+            if self.order_vale > 0:
+                send_cmd.linear.x = float(self.speed)
+            else:
+                send_cmd.linear.x = -float(self.speed)
+
+            if self.moved_vale < abs(self.order_vale):
+                if self.speed_start_flag:
+                    self.period_time = time.time() - self.speed_update_time
+
+                self.pub_twist.publish(send_cmd)
+                self.speed_update_time = time.time()
+                if not self.speed_start_flag:
+                    self.start_measurement_time = time.time()
+                    self.speed_start_flag = True
+
+                # 現在値のTF更新
+                x, y, angle = self.get_current_tf()
+                if x is not None:
+                    self.current_pose_x = x
+                    self.current_pose_y = y
+                    self.current_angle = angle
+
+                    sub_x = self.before_pose_x - self.current_pose_x
+                    sub_y = self.before_pose_y - self.current_pose_y
+                    self.moved_vale = math.hypot(sub_x, sub_y)
+                    self.get_logger().info(f"現在の移動距離: {self.moved_vale:f}[cm]")
+            else:
+                self.pub_twist.publish(Twist())  # 停止
+                all_time = time.time() - self.start_measurement_time
+                print(f"総移動時間:{all_time}[sec]")
+
+                self.reset_state()
+
+                end = String()
+                end.data = "move end"
+                self.pub_retrun_arrive.publish(end)
 
 
-
-
-
-
-
+def main(args=None):
+    rclpy.init(args=args)
+    node = OdomBaseController()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':
-
-	rospy.init_node('odom_base_controller')
-
-	obc = OdomBaseController()
-	rospy.spin()
+    main()
