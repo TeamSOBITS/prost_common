@@ -1,50 +1,82 @@
 #!/usr/bin/env python3
-# coding: utf-8
-import rospy
-import tf
+# -*- coding: utf-8 -*-
+
 import math
-import time
-from tf.transformations import euler_from_quaternion
-from geometry_msgs.msg import Pose, Point, Quaternion, Twist
-from std_msgs.msg import String
-from nav_msgs.msg import Odometry
 
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-import datetime
+import rclpy
+from rclpy.node import Node
+from tf2_ros import Buffer, TransformListener, TransformException
+
+# TF確認の周期 (秒)
+CHECK_PERIOD_SEC = 0.1
 
 
+def euler_from_quaternion(x, y, z, w):
+    """
+    クォータニオン (x, y, z, w) からオイラー角 (roll, pitch, yaw) [rad] を計算するヘルパー関数
+    """
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + y * y)
+    roll = math.atan2(t0, t1)
 
-class TfConfirmation:
-	def __init__(self):
-		self.listener = tf.TransformListener()
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    pitch = math.asin(t2)
 
-		rospy.sleep(3)
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (y * y + z * z)
+    yaw = math.atan2(t3, t4)
 
-		while not rospy.is_shutdown():
-			(trans,rot) = self.listener.lookupTransform('/base_link', '/odom', rospy.Time(0))
-			euler = tf.transformations.euler_from_quaternion((rot[0],rot[1],rot[2],rot[3]))
-			#現在位置代入
-			before_pose_x = trans[0] * 100#[cm]
-			before_pose_y = trans[1] * 100#[cm]
-			before_pose_z = trans[2] * 100#[cm]
-			before_angle_1 = math.degrees(euler[0])#[deg]
-			before_angle_2 = math.degrees(euler[1])#[deg]
-			before_angle_3 = math.degrees(euler[2])#[deg]
-			#print "-- trans"
-			#print len(trans)
-			#print "-- len"
-			#print len(euler)
-			rospy.loginfo("--エンコーダ値: x:%f y:%f z:%f | roll:%f pitch:%f yaw:%f", before_pose_x, before_pose_y, before_pose_z, before_angle_1, before_angle_2, before_angle_3)
+    return roll, pitch, yaw
 
 
-		rospy.loginfo("break OK.")
+class TfConfirmation(Node):
+    def __init__(self):
+        super().__init__('tf_confirmation')
+
+        # TF2 の設定
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+
+        # ROS 2 ではブロッキングの while ループの代わりにタイマーで定期実行する
+        self.timer = self.create_timer(CHECK_PERIOD_SEC, self.check_tf)
+
+    def check_tf(self):
+        try:
+            # ROS 2 ではフレーム名の先頭スラッシュ ('/') は含めない
+            trans = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time())
+        except TransformException as ex:
+            self.get_logger().warn(f"Could not transform base_link to odom: {ex}")
+            return
+
+        pose_x = trans.transform.translation.x * 100  # [cm]
+        pose_y = trans.transform.translation.y * 100  # [cm]
+        pose_z = trans.transform.translation.z * 100  # [cm]
+
+        rot = trans.transform.rotation
+        roll, pitch, yaw = euler_from_quaternion(rot.x, rot.y, rot.z, rot.w)
+        angle_1 = math.degrees(roll)
+        angle_2 = math.degrees(pitch)
+        angle_3 = math.degrees(yaw)
+
+        self.get_logger().info(
+            f"--エンコーダ値: x:{pose_x:f} y:{pose_y:f} z:{pose_z:f} "
+            f"| roll:{angle_1:f} pitch:{angle_2:f} yaw:{angle_3:f}"
+        )
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = TfConfirmation()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':
-
-	rospy.init_node('tf_confirmation')
-
-	tc = TfConfirmation()
-	rospy.spin()
+    main()
